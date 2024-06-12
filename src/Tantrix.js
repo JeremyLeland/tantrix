@@ -365,15 +365,17 @@ export function getValidMoves( board, hand ) {
   adjacent.forEach( adj => {
     if ( !adj.occupied ) { 
       hand.forEach( tile => {
-        for ( let dir = 0; dir < 6; dir ++ ) {
-          const move = { id: tile, rot: dir, col: adj.col, row: adj.row };
+        if ( tile != null ) {
+          for ( let dir = 0; dir < 6; dir ++ ) {
+            const move = { id: tile, rot: dir, col: adj.col, row: adj.row };
 
-          if ( adj.neighbors > 2 ) {
-            move.forced = true;
-          }
-        
-          if ( isValidMove( board, move ) ) {
-            moves.push( move );
+            if ( adj.neighbors > 2 ) {
+              move.forced = true;
+            }
+          
+            if ( isValidMove( board, move ) ) {
+              moves.push( move );
+            }
           }
         }
       } );
