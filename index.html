@@ -3,6 +3,7 @@
 
 <script type="module">
   import { Canvas } from './src/Canvas.js';
+  import { GameState } from './src/GameState.js';
   import * as Tantrix from './src/Tantrix.js';
 
   const SIZE = 18;
@@ -12,33 +13,11 @@
 
   const canvas = new Canvas();
 
-  const gameState = JSON.parse( localStorage.getItem( Tantrix.GameStateKey ) ) ?? newGameState();
-
-  function newGameState() {
-    const gameState = {
-      board: [],
-      hands: [ [], [], ],
-      deck: Array.from( Array( Tantrix.NumTiles ), ( _, i ) => i ),
-      turn: 0,
-    };
-
-    for ( let i = 0; i < Tantrix.HandSize; i ++ ) {
-      for ( let h = 0; h < 2; h ++ ) {
-        gameState.hands[ h ].push( pullFromDeck( gameState.deck ) );
-      }
-    }
-
-    return gameState;
-  }
-
-  function pullFromDeck( deck ) {
-    return deck.splice( Math.floor( Math.random() * deck.length ), 1 )[ 0 ];
-  }
-
+  const gameState = new GameState( JSON.parse( localStorage.getItem( Tantrix.GameStateKey ) ) );
 
   console.log( JSON.stringify( gameState ) );
   
-  let activePiece, pieceStartX, pieceStartY, activeIndex;
+  let activePiece, pieceStartX, pieceStartY;
 
   
   let mouseX, mouseY;
@@ -53,7 +32,7 @@
     Tantrix.drawCoords( ctx, -4, -4, 4, 4 );
     gameState.board.forEach( piece => Tantrix.drawPiece( ctx, piece ) );
 
-    const possibleMoves = Tantrix.getValidMoves( gameState.board, gameState.hands[ gameState.turn ] );
+    const possibleMoves = Tantrix.getValidMoves( gameState.board, gameState.hands[ gameState.turn ].filter( id => id != null ) );
     possibleMoves.forEach( move => {
       if ( move.forced ) {
         ctx.globalAlpha = 0.5;
@@ -151,10 +130,11 @@
       const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
       console.log( 'left index: ' + index );
 
-      if ( 0 <= index < 6 ) {
+      const id = gameState.hands[ 0 ][ index ];
+
+      if ( id != null ) {
         // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: gameState.hands[ 0 ][ index ], rot: 0, x: mouseX, y: mouseY };
-        activeIndex = index;
+        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
         pieceStartX = mouseX;
         pieceStartY = mouseY;
       }
@@ -164,10 +144,11 @@
       const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
       console.log( 'right index: ' + index );
 
-      if ( 0 <= index < 6 ) {
+      const id = gameState.hands[ 1 ][ index ];
+
+      if ( id != null ) {
         // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: gameState.hands[ 1 ][ index ], rot: 0, x: mouseX, y: mouseY };
-        activeIndex = index;
+        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
         pieceStartX = mouseX;
         pieceStartY = mouseY;
       }
@@ -179,15 +160,7 @@
   document.addEventListener( 'pointerup', e => {
     if ( activePiece ) {
       if ( Tantrix.isValidMove( gameState.board, activePiece ) ) {
-        gameState.board.push( {
-          id: activePiece.id,
-          rot: activePiece.rot,
-          col: activePiece.col,
-          row: activePiece.row,
-        } );
-
-        gameState.hands[ gameState.turn ][ activeIndex ] = pullFromDeck( gameState.deck );
-        gameState.turn = ( gameState.turn + 1 ) % gameState.hands.length;
+        gameState.makeMove( activePiece );
 
         localStorage.setItem( Tantrix.GameStateKey, JSON.stringify( gameState ) );
         console.log( JSON.stringify( gameState ) );
@@ -214,8 +187,6 @@
         }
 
         console.log( score );
-
-        console.log( Tantrix.getValidMoves( gameState.board, gameState.hands[ gameState.turn ] ) );
       }
       else {
         activePiece.x = pieceStartX;
