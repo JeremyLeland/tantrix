@@ -1,21 +1,37 @@
 <title>Tantrix</title>
 <link rel="stylesheet" href="./style.css">
 
+<style>
+  #new {
+    position: absolute;
+    left: 0px;
+    top: 0px;
+  }
+</style>
+
+<canvas id="canvas"></canvas>
+<select id="new">
+  <option selected disabled hidden>New Game</option>
+  <option value="2">2 Players</option>
+  <option value="3">3 Players</option>
+  <option value="4">4 Players</option>
+</select>
+
 <script type="module">
   import { Canvas } from './src/Canvas.js';
   import { GameState } from './src/GameState.js';
   import * as Tantrix from './src/Tantrix.js';
 
-  const SIZE = 18;
+  const SIZE = 20;
   let scrollX = 0.5, scrollY = 0.5;
 
   const HAND_OFFSET = 8, HAND_START = -5;
+  const HORIZ_HAND_OFFSET = Math.sqrt( 3 ) / 2;
 
-  const canvas = new Canvas();
+  const canvas = new Canvas( document.getElementById( 'canvas' ) );
 
-  const gameState = new GameState( JSON.parse( localStorage.getItem( Tantrix.GameStateKey ) ) );
+  let gameState = GameState.fromLocalStore() ?? GameState.newGame( 2 );
 
-  console.log( JSON.stringify( gameState ) );
   
   let activePiece, pieceStartX, pieceStartY;
 
@@ -28,8 +44,8 @@
     ctx.scale( 1 / SIZE, 1 / SIZE );
     ctx.lineWidth = 1 / SIZE;
     
-    Tantrix.drawGrid( ctx, -4, -4, 4, 4 );
-    Tantrix.drawCoords( ctx, -4, -4, 4, 4 );
+    Tantrix.drawGrid( ctx, -4, -3, 4, 3 );
+    Tantrix.drawCoords( ctx, -4, -3, 4, 3 );
     gameState.board.forEach( piece => Tantrix.drawPiece( ctx, piece ) );
 
     const possibleMoves = Tantrix.getValidMoves( gameState.board, gameState.hands[ gameState.turn ].filter( id => id != null ) );
@@ -47,23 +63,48 @@
     } );
     
 
-    // Hands (TODO: player 3 and 4 above/below?)
+    // Hands 1 and 2 (left/right)
     [ -1, 1 ].forEach( ( offset, index ) => {
-      ctx.translate( offset * HAND_OFFSET, HAND_START );
+      ctx.save(); {
+        ctx.translate( offset * HAND_OFFSET, HAND_START );
 
-      if ( gameState.turn == index ) {
-        ctx.lineWidth = 0.05;
-        ctx.strokeStyle = 'white';
-        ctx.strokeRect( -1, -1, 2, Tantrix.HandSize * 2 );
-      }
-
-      gameState.hands[ index ].forEach( pieceId => {
-        if ( pieceId != null && pieceId != activePiece?.id ) {
-          Tantrix.drawTile( ctx, pieceId );
+        if ( gameState.turn == index ) {
+          ctx.lineWidth = 0.05;
+          ctx.strokeStyle = 'white';
+          ctx.strokeRect( -1, -1, 2, Tantrix.HandSize * 2 );
         }
-        ctx.translate( 0, 2 );
-      } );
-      ctx.translate( -offset * HAND_OFFSET, HAND_START - 2 );
+
+        gameState.hands[ index ].forEach( pieceId => {
+          if ( pieceId != null && pieceId != activePiece?.id ) {
+            Tantrix.drawTile( ctx, pieceId );
+          }
+          ctx.translate( 0, 2 );
+        } );
+      }
+      ctx.restore();
+    } );
+
+    // Hands 3 and 4 (top/bottom)
+    [ -1, 1 ].forEach( ( offset, index ) => {
+      if ( index + 2 < gameState.hands.length ) {
+        ctx.save(); {
+          ctx.translate( HAND_START, offset * HAND_OFFSET );
+
+          if ( gameState.turn == index + 2 ) {
+            ctx.lineWidth = 0.05;
+            ctx.strokeStyle = 'white';
+            ctx.strokeRect( -1, -1, Tantrix.HandSize * 2, 2 );
+          }
+
+          gameState.hands[ index + 2 ].forEach( pieceId => {
+            if ( pieceId != null && pieceId != activePiece?.id ) {
+              Tantrix.drawTile( ctx, pieceId );
+            }
+            ctx.translate( 2, 0 );
+          } );
+        }
+        ctx.restore();
+      }
     } );
 
     if ( activePiece ) {
@@ -78,8 +119,8 @@
       ctx.globalAlpha = 1;
     }
     
-    // Score below
-    ctx.translate( -3, 9.3 );
+    // Score above
+    ctx.translate( -3, -9.5 );
 
     ctx.font = '0.4px Arial';
     ctx.textAlign = 'center';
@@ -128,7 +169,6 @@
 
     if ( gameState.turn == 0 && mouseX < -HAND_OFFSET + 1 ) {
       const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
-      console.log( 'left index: ' + index );
 
       const id = gameState.hands[ 0 ][ index ];
 
@@ -142,9 +182,34 @@
 
     else if ( gameState.turn == 1 && mouseX > HAND_OFFSET - 1 ) {
       const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
-      console.log( 'right index: ' + index );
 
       const id = gameState.hands[ 1 ][ index ];
+
+      if ( id != null ) {
+        // TODO: Figure out actual original spot, don't just use mouse coords
+        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+        pieceStartX = mouseX;
+        pieceStartY = mouseY;
+      }
+    }
+
+    else if ( gameState.turn == 2 && mouseY < -HAND_OFFSET + 1 ) {
+      const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
+
+      const id = gameState.hands[ 2 ][ index ];
+
+      if ( id != null ) {
+        // TODO: Figure out actual original spot, don't just use mouse coords
+        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+        pieceStartX = mouseX;
+        pieceStartY = mouseY;
+      }
+    }
+
+    else if ( gameState.turn == 3 && mouseY > HAND_OFFSET - 1 ) {
+      const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
+
+      const id = gameState.hands[ 3 ][ index ];
 
       if ( id != null ) {
         // TODO: Figure out actual original spot, don't just use mouse coords
@@ -162,8 +227,7 @@
       if ( Tantrix.isValidMove( gameState.board, activePiece ) ) {
         gameState.makeMove( activePiece );
 
-        localStorage.setItem( Tantrix.GameStateKey, JSON.stringify( gameState ) );
-        console.log( JSON.stringify( gameState ) );
+        // console.log( JSON.stringify( gameState ) );
 
         const segments = Tantrix.getSegments( gameState.board );
         // console.log( segments );
@@ -209,6 +273,12 @@
 
       canvas.redraw();
     }
+  } );
+
+  document.getElementById( 'new' ).addEventListener( 'change', e => {
+    gameState = GameState.newGame( parseInt( e.target.value ) );
+    e.target.selectedIndex = 0;
+    canvas.redraw();
   } );
 
 </script>

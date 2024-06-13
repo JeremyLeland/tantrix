@@ -4,29 +4,34 @@ import * as Tantrix from './Tantrix.js';
 export class GameState {
   #possibleMoves = [];
 
-  constructor( json ) {
-    if ( json ) {
-      Object.assign( this, json );
-    }
-    else {
-      Object.assign( this, {
-        board: [],
-        hands: [ [], [], ],
-        deck: Array.from( Array( Tantrix.NumTiles ), ( _, i ) => i ),
-        turn: 0,
-        phase: 0,
-      } );
+  static fromLocalStore() {
+    const gameState = JSON.parse( localStorage.getItem( Tantrix.GameStateKey ) );
 
-      for ( let i = 0; i < Tantrix.HandSize; i ++ ) {
-        this.hands.forEach( hand => hand.push( this.pullFromDeck() ) );
-      }
+    if ( gameState ) {
+      return new GameState( gameState );
     }
-
-    this.#updatePossibleMoves();
   }
 
-  pullFromDeck() {
-    return this.deck.splice( Math.floor( Math.random() * this.deck.length ), 1 )[ 0 ];
+  static newGame( numPlayers ) {
+    const gameState = {
+      board: [],
+      hands: Array.from( Array( numPlayers ), _ => [] ),
+      deck: Array.from( Array( Tantrix.NumTiles ), ( _, i ) => i ),
+      turn: 0,
+      phase: 0,
+    }
+
+    for ( let i = 0; i < Tantrix.HandSize; i ++ ) {
+      gameState.hands.forEach( hand => hand.push( pullFromDeck( gameState.deck ) ) );
+    }
+
+    return new GameState( gameState );
+  }
+
+  constructor( json ) {
+    Object.assign( this, json );
+    
+    this.#updatePossibleMoves();
   }
 
   #updatePossibleMoves() {
@@ -39,6 +44,9 @@ export class GameState {
       console.log( `Player ${ this.turn }, phase ${ this.phase }: No forced moves, advancing to next phase` );
       this.phase ++;
     }
+
+    // Convenient place to save our state
+    localStorage.setItem( Tantrix.GameStateKey, JSON.stringify( this ) );
   }
 
   makeMove( move ) {
@@ -49,7 +57,7 @@ export class GameState {
       row: move.row,
     } );
 
-    this.hands[ this.turn ][ move.handIndex ] = this.pullFromDeck();
+    this.hands[ this.turn ][ move.handIndex ] = pullFromDeck( this.deck );
 
     if ( this.phase == 1 ) {
       console.log( `Player ${ this.turn }, phase ${ this.phase }: Free move played, advancing to next phase` );
@@ -67,4 +75,8 @@ export class GameState {
       this.#updatePossibleMoves();
     }
   }
+}
+
+function pullFromDeck( deck ) {
+  return deck.splice( Math.floor( Math.random() * deck.length ), 1 )[ 0 ];
 }
