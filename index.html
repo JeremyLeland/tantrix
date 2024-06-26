@@ -152,118 +152,150 @@
     }
   }
 
-  document.addEventListener( 'pointermove', e => {
-    mouseX = SIZE * ( e.clientX / canvas.scale - scrollX )
-    mouseY = SIZE * ( e.clientY / canvas.scale - scrollY );
-    
-    updateActivePiece();
+  let lastRotTouchX, lastRotTouchY, touchRotAmount = 0;
 
-    canvas.redraw();
+  document.addEventListener( 'pointermove', e => {
+    if ( e.isPrimary ) {
+      mouseX = SIZE * ( e.clientX / canvas.scale - scrollX )
+      mouseY = SIZE * ( e.clientY / canvas.scale - scrollY );
+      
+      updateActivePiece();
+      
+      canvas.redraw();
+    }
+    else {
+      if ( lastRotTouchX && lastRotTouchY ) {
+        touchRotAmount += Math.hypot( e.clientX - lastRotTouchX, e.clientY - lastRotTouchY );
+        // touchRotAmount += Math.hypot( e.movementX, e.movementY );
+
+        const ROTATE_THRESHOLD = 100;
+        if ( touchRotAmount > ROTATE_THRESHOLD ) {
+          touchRotAmount -= ROTATE_THRESHOLD;
+
+          activePiece.rot = activePiece.rot - 1 /*Math.sign( e.wheelDelta )*/ % 6;
+          updateActivePiece();
+
+          canvas.redraw();
+        }
+      }
+
+      lastRotTouchX = e.clientX;
+      lastRotTouchY = e.clientY;
+    }
   } );
 
   document.addEventListener( 'pointerdown', e => {
-    // TODO: Don't duplicate, put this logic in one place
-    mouseX = SIZE * ( e.clientX / canvas.scale - scrollX )
-    mouseY = SIZE * ( e.clientY / canvas.scale - scrollY );
+    if ( e.isPrimary ) {
+      // TODO: Don't duplicate, put this logic in one place
+      mouseX = SIZE * ( e.clientX / canvas.scale - scrollX )
+      mouseY = SIZE * ( e.clientY / canvas.scale - scrollY );
 
 
-    if ( gameState.turn == 0 && mouseX < -HAND_OFFSET + 1 ) {
-      const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
+      if ( gameState.turn == 0 && mouseX < -HAND_OFFSET + 1 ) {
+        const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
 
-      const id = gameState.hands[ 0 ][ index ];
+        const id = gameState.hands[ 0 ][ index ];
 
-      if ( id != null ) {
-        // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
-        pieceStartX = mouseX;
-        pieceStartY = mouseY;
+        if ( id != null ) {
+          // TODO: Figure out actual original spot, don't just use mouse coords
+          activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+          pieceStartX = mouseX;
+          pieceStartY = mouseY;
+        }
       }
-    }
 
-    else if ( gameState.turn == 1 && mouseX > HAND_OFFSET - 1 ) {
-      const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
+      else if ( gameState.turn == 1 && mouseX > HAND_OFFSET - 1 ) {
+        const index = Math.floor( ( mouseY + Tantrix.HandSize ) / 2 );
 
-      const id = gameState.hands[ 1 ][ index ];
+        const id = gameState.hands[ 1 ][ index ];
 
-      if ( id != null ) {
-        // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
-        pieceStartX = mouseX;
-        pieceStartY = mouseY;
+        if ( id != null ) {
+          // TODO: Figure out actual original spot, don't just use mouse coords
+          activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+          pieceStartX = mouseX;
+          pieceStartY = mouseY;
+        }
       }
-    }
 
-    else if ( gameState.turn == 2 && mouseY < -HAND_OFFSET + 1 ) {
-      const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
+      else if ( gameState.turn == 2 && mouseY < -HAND_OFFSET + 1 ) {
+        const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
 
-      const id = gameState.hands[ 2 ][ index ];
+        const id = gameState.hands[ 2 ][ index ];
 
-      if ( id != null ) {
-        // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
-        pieceStartX = mouseX;
-        pieceStartY = mouseY;
+        if ( id != null ) {
+          // TODO: Figure out actual original spot, don't just use mouse coords
+          activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+          pieceStartX = mouseX;
+          pieceStartY = mouseY;
+        }
       }
-    }
 
-    else if ( gameState.turn == 3 && mouseY > HAND_OFFSET - 1 ) {
-      const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
+      else if ( gameState.turn == 3 && mouseY > HAND_OFFSET - 1 ) {
+        const index = Math.floor( ( mouseX + Tantrix.HandSize ) / 2 );
 
-      const id = gameState.hands[ 3 ][ index ];
+        const id = gameState.hands[ 3 ][ index ];
 
-      if ( id != null ) {
-        // TODO: Figure out actual original spot, don't just use mouse coords
-        activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
-        pieceStartX = mouseX;
-        pieceStartY = mouseY;
+        if ( id != null ) {
+          // TODO: Figure out actual original spot, don't just use mouse coords
+          activePiece = { id: id, rot: 0, x: mouseX, y: mouseY, handIndex: index };
+          pieceStartX = mouseX;
+          pieceStartY = mouseY;
+        }
       }
+      
+      canvas.redraw();
     }
-    
-    canvas.redraw();
   } );
 
   document.addEventListener( 'pointerup', e => {
-    if ( activePiece ) {
-      if ( Tantrix.isValidMove( gameState.board, activePiece ) ) {
-        gameState.makeMove( activePiece );
+    if ( e.isPrimary ) {
+      if ( activePiece ) {
+        if ( Tantrix.isValidMove( gameState.board, activePiece ) ) {
+          gameState.makeMove( activePiece );
 
-        // console.log( JSON.stringify( gameState ) );
+          // console.log( JSON.stringify( gameState ) );
 
-        const segments = Tantrix.getSegments( gameState.board );
-        // console.log( segments );
+          const segments = Tantrix.getSegments( gameState.board );
+          // console.log( segments );
 
-        const lines = Tantrix.getLines( segments );
-        // console.log( lines );
+          const lines = Tantrix.getLines( segments );
+          // console.log( lines );
 
-        const longest = {};
+          const longest = {};
 
-        lines.forEach( line => {
-          const color = line[ 0 ].color;
+          lines.forEach( line => {
+            const color = line[ 0 ].color;
 
-          if ( longest[ color ] == null || longest[ color ].length < line.length ) {
-            longest[ color ] = line;
+            if ( longest[ color ] == null || longest[ color ].length < line.length ) {
+              longest[ color ] = line;
+            }
+          } );
+
+          // console.log( longest );
+          for ( const color in longest ) {
+            score[ color ] = longest[ color ].length;
           }
-        } );
 
-        // console.log( longest );
-        for ( const color in longest ) {
-          score[ color ] = longest[ color ].length;
+          console.log( score );
+        }
+        else {
+          activePiece.x = pieceStartX;
+          activePiece.y = pieceStartY;
+          activePiece.col = null;
+          activePiece.row = null;
+          activePiece.rot = 0;
         }
 
-        console.log( score );
-      }
-      else {
-        activePiece.x = pieceStartX;
-        activePiece.y = pieceStartY;
-        activePiece.col = null;
-        activePiece.row = null;
-        activePiece.rot = 0;
+        activePiece = null;
       }
 
-      activePiece = null;
+      canvas.redraw();
     }
-
-    canvas.redraw();
+    else {
+      lastRotTouchX = null;
+      lastRotTouchY = null;
+      touchRotAmount = 0;
+    }
   } );
 
   document.addEventListener( 'wheel', e => {
